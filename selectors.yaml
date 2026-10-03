@@ -1,0 +1,149 @@
+# CSS/XPath selectors and recognition regexes for ChatGPT and Grok.
+# The UIs change often; edit this file (no code change needed) when they do.
+# Selectors marked TODO must be verified against the real logged-in DOM.
+
+chatgpt:
+  url_new_chat: "https://chatgpt.com/"
+  new_chat_button: "a[data-testid='create-new-chat-button']"  # verified 2026-09-25
+  input_box: "#prompt-textarea"             # verified 2026-09-25 (contenteditable ProseMirror)
+  send_button: "button[data-testid='send-button']"  # verified 2026-09-25 (#composer-submit-button)
+  stop_button: "button[data-testid='stop-button']"  # verified 2026-09-25 (same button while generating)
+  assistant_message: "[data-message-author-role='assistant']"  # verified 2026-09-25
+  file_download_link: "a[href*='sandbox']"  # TODO: kiểm tra selector thực tế (cần luồng trả file .docx)
+  # verified 2026-09-28: generated image is served from backend-api/estuary/content
+  # (language-independent). alt="Generated image: ..." also works but depends on UI language.
+  generated_image: "img[src*='/backend-api/estuary/content']"
+  # verified 2026-09-28 (cand_chatgpt): the composer's hidden photo <input> — set
+  # files on it directly (no need to click the "+" menu). Used to attach a
+  # script's reference image(s) to the script-writing message.
+  # The cookie banner overlays the bottom of the page (where the composer is).
+  # NOT verified against the live DOM yet — tried in order, best effort, so a
+  # miss costs nothing. Text matches are language-dependent by nature.
+  cookie_dismiss:
+    - "button:has-text('Accept all')"
+    - "button:has-text('Chấp nhận tất cả')"
+    - "button[aria-label*='cookie' i]"
+  attach_image_input: "input[data-testid='upload-photos-input']"
+
+grok:
+  # Verified 2026-09-28 against a live CDP capture of grok.com/imagine in VIDEO
+  # mode (tools/_capture_out/cand_grok_3.json + page_grok_3.html). Each selector
+  # below matched exactly ONE element on that page.
+  url_image_to_video: "https://grok.com/imagine"
+  # The cookie banner overlays the bottom of the page (where the composer is),
+  # so it is dismissed before anything is clicked.
+  cookie_dismiss: "button[aria-label='Dismiss cookie notice']"
+  # Imagine has an Image/Video/Agent radiogroup; the resolution + duration
+  # controls only exist once Video is selected.
+  video_mode_button: "button[role='radio'][aria-label='Video']"
+  # /imagine has THREE file inputs; the first two belong to the Text Edit /
+  # Precise Edit template cards and come earlier in the DOM, so a bare
+  # "input[type=file]" picks the wrong one. Scope to the composer form's input.
+  image_upload_input: "form input[type='file'][name='files']"
+  # The composer is a ProseMirror contenteditable. The page's only <textarea> is
+  # an aria-hidden, visibility:hidden measuring element — "textarea" pastes nowhere.
+  motion_prompt_box: "[data-testid='chat-input'] div[contenteditable='true']"
+  # 2026-09-30: Grok moved these from dropdowns to INLINE radio buttons in the
+  # composer — role="radio", NO aria-label, the value is the button's text
+  # ("6s"/"10s"/"15s", "480p"/"720p"). The old triggers match nothing now, so a
+  # run silently kept Grok's defaults (480p/10s) while asking for 15s/720p.
+  # Both shapes are supported: the inline option is tried first, and the
+  # dropdown trigger below is used only if it is still there.
+  option_button: "form button[role='radio']"
+  duration_control: "button[aria-label='Video duration']"     # legacy dropdown
+  quality_control: "button[aria-label='Video resolution']"    # legacy dropdown
+  # NOTE (smoke run 2026-09-28): this control DISAPPEARS once an image is
+  # uploaded — with a first frame, Grok takes the ratio from the image. So it
+  # only applies to text -> video, never to our image -> video flow.
+  aspect_ratio_control: "button[aria-label='Aspect Ratio']"   # shows e.g. "2:3"
+  # Options inside an opened control dropdown, tried in order until one matches.
+  # verified 2026-09-28 (--dump-menus, menu open): the items are
+  # <div role="menuitemradio" aria-checked> inside a radix popper portal —
+  # note [role='menuitem'] does NOT match role="menuitemradio" in CSS, which is
+  # why the first smoke run silently kept Grok's defaults. Real labels:
+  # duration = 6s / 10s / 15s, resolution = 480p / 720p / 1080p.
+  # The rest are kept as fallbacks in case Grok changes the role.
+  menu_item:
+    - "[role='menuitemradio']"
+    - "[role='menuitem']"
+    - "[role='option']"
+    - "[data-radix-collection-item]"
+  # verified 2026-09-28 (smoke run): the composer grows a real submit button
+  # once an image/prompt is present -> aria-label="Submit", type="submit".
+  # Empty would fall back to pressing Enter in the composer (that works too).
+  generate_button: "button[aria-label='Submit']"
+  # The rendered video. The sidebar history uses the SAME
+  # assets.grok.com/users/…/generated/<id>/generated_video.mp4 URL shape, so it
+  # has to be excluded — but scoping to <main> (what this used to do) only
+  # works on the composer layout. After submitting, Grok can land on
+  # /imagine/post/<id>, where <main> holds just the zoom control and the media
+  # sits outside it: a finished video then matched NOTHING and the step waited
+  # out the full render timeout (seen live 2026-09-29). Excluding the sidebar
+  # by ancestor instead matches on both layouts.
+  video_result: "xpath=//video[contains(@src,'/generated/')][not(ancestor::*[@data-sidebar])]"
+
+# Recognition patterns (Python regex, case-insensitive at use site).
+patterns:
+  continue_marker: "\\[PART\\s+\\d+\\s+COMPLETE.*?CONTINUE.*?\\]"
+  quota_exhausted:
+    - "you've reached your.*limit"
+    - "quota"
+    - "try again later"
+    # Grok Imagine does not say "quota": once the account's allowance is used up
+    # it shows an upsell dialog instead (seen live 2026-09-30, while the step
+    # waited 600s for a video that was never going to render).
+    - "upgrade to supergrok"
+    - "unlock your creativity with imagine"
+    # ChatGPT announces a spent allowance in the UI rather than in a reply, and
+    # words it several ways depending on what ran out. Missing it does not just
+    # mislabel a step — it stops the account rotation from firing at all.
+    # TODO: kiểm tra chữ thực tế — none of these has been seen live yet; when a
+    # real limit message appears, copy its wording in and drop what does not fit.
+    - "you(’|')?ve (hit|reached) the .{0,30}limit"
+    - "limit reached"
+    - "upgrade to (chatgpt )?(plus|pro|go)"
+    - "you(’|')?ll be able to .{0,20}again (after|at|in)"
+    - "image generation limit"
+    # KHONG them mau tieng Viet chung chung ("giới hạn", "hết lượt"): quota duoc
+    # do tren TOAN BO noi dung tra loi, tuc la ca cau chuyen — mot cau van binh
+    # thuong nhu "Cô ấy đã chạm tới giới hạn của sự chịu đựng" se bi coi la het
+    # quota va lam xoay vong tai khoan oan.
+  policy_refusal:
+    - "I can't help with that"
+    - "against.*content policy"
+    - "unable to generate this image"
+  video_error:
+    # Keep these specific: a bare "try again" would also match the
+    # quota_exhausted "try again later" and misclassify a quota case.
+    - "something went wrong"
+    - "failed to generate"
+    - "render failed"
+    - "unable to create the video"
+  # NOTE: these patterns are matched against the assistant response text, which
+  # for a script IS the (long) story — keep them specific so ordinary story
+  # wording never trips them (a bare "log in" would). Ideally, when tuning
+  # against the live site, point these at a login/error banner element instead
+  # of the message body (same applies to quota_exhausted / policy_refusal).
+  session_expired:
+    - "please log in"
+    - "log in to continue"
+    - "sign in to continue"
+    - "you(’|')?ve been logged out"
+    - "session (has )?expired"
+
+# Section heading regexes (matched on a stripped line, IGNORECASE).
+# Order = canonical section order (1..9).
+section_headings:
+  # The (?-i:[^a-z]*)$ tail requires the rest of the line after the heading
+  # keyword to contain no lowercase letters, so a story sentence that merely
+  # starts with e.g. "IMAGE PROMPT was ..." is not mistaken for a heading,
+  # while real headings ("IMAGE PROMPT — 9:16", "KEY SCENES + NOTE") still match.
+  full_story: "^#*\\s*\\**\\s*(\\d+[\\.\\)]\\s*)?FULL STORY(?-i:[^a-z]*)$"
+  key_scenes: "^#*\\s*\\**\\s*(\\d+[\\.\\)]\\s*)?KEY SCENES(?-i:[^a-z]*)$"
+  image_9x16: "^#*\\s*\\**\\s*(\\d+[\\.\\)]\\s*)?IMAGE PROMPT(?-i:[^a-z]*)$"
+  thumbnail_16x9: "^#*\\s*\\**\\s*(\\d+[\\.\\)]\\s*)?THUMBNAIL(?-i:[^a-z]*)$"
+  video_prompt: "^#*\\s*\\**\\s*(\\d+[\\.\\)]\\s*)?VIDEO AI PROMPT(?-i:[^a-z]*)$"
+  fb_title: "^#*\\s*\\**\\s*(\\d+[\\.\\)]\\s*)?FACEBOOK TITLE(?-i:[^a-z]*)$"
+  fb_description: "^#*\\s*\\**\\s*(\\d+[\\.\\)]\\s*)?FACEBOOK VIDEO DESCRIPTION(?-i:[^a-z]*)$"
+  story_teaser: "^#*\\s*\\**\\s*(\\d+[\\.\\)]\\s*)?STORY TEASER(?-i:[^a-z]*)$"
+  hashtags: "^#*\\s*\\**\\s*(\\d+[\\.\\)]\\s*)?HASHTAGS(?-i:[^a-z]*)$"
