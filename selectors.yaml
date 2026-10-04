@@ -4,26 +4,54 @@
 
 chatgpt:
   url_new_chat: "https://chatgpt.com/"
-  new_chat_button: "a[data-testid='create-new-chat-button']"  # verified 2026-09-25
-  input_box: "#prompt-textarea"             # verified 2026-09-25 (contenteditable ProseMirror)
-  send_button: "button[data-testid='send-button']"  # verified 2026-09-25 (#composer-submit-button)
-  stop_button: "button[data-testid='stop-button']"  # verified 2026-09-25 (same button while generating)
-  assistant_message: "[data-message-author-role='assistant']"  # verified 2026-09-25
-  file_download_link: "a[href*='sandbox']"  # TODO: kiểm tra selector thực tế (cần luồng trả file .docx)
-  # verified 2026-09-28: generated image is served from backend-api/estuary/content
-  # (language-independent). alt="Generated image: ..." also works but depends on UI language.
-  generated_image: "img[src*='/backend-api/estuary/content']"
-  # verified 2026-09-28 (cand_chatgpt): the composer's hidden photo <input> — set
-  # files on it directly (no need to click the "+" menu). Used to attach a
-  # script's reference image(s) to the script-writing message.
+  new_chat_button: "button[aria-label='New chat']"   # verified 2026-10-04
+  # 2026-10-04, read off a logged-in page over CDP: ChatGPT removed
+  # id="prompt-textarea" and nearly every data-testid the tool used to click.
+  # Each entry below lists TODAY's shape first and the previous UI after it,
+  # separated by commas — one CSS selector that matches whichever shape the
+  # account happens to be served. Commas (not a YAML list) on purpose: a build
+  # shipped before 2026-10-04 reads these entries as a single string, and the
+  # "Kiểm tra cập nhật" button must never hand it something it cannot parse.
+  #
+  # composer: div[contenteditable][role=textbox] (2026-10-04)
+  #           #prompt-textarea                   (2026-09-25)
+  input_box: "div[contenteditable='true'][role='textbox'], #prompt-textarea, [data-testid='prompt-textarea'], form div[contenteditable='true']"
+  # Extra shapes accepted as proof this browser is logged in. They are merged
+  # INTO input_box rather than checked on their own: the signed-in check and
+  # the send path must look for the same element. When they drifted apart on
+  # 2026-10-04 a run passed the login check and then failed every script on a
+  # 30-second click timeout, which is how it reached a customer.
+  signed_in_markers: []
+  # Visible proof of being logged OUT. Only these (or an /auth URL) may mark an
+  # account as expired.
+  logged_out_markers:
+    - "[data-testid='login-button']"
+    - "a[href*='/auth/login']"
+    - "button[data-testid='mobile-login-button']"
+  # Only exists once the composer has text. aria-label is all that marks it now.
+  #   button[aria-label=Send]            (2026-10-04)
+  #   button[data-testid=send-button]    (2026-09-25)
+  send_button: "button[aria-label='Send'], button[data-testid='send-button'], #composer-submit-button"
+  # Present while the reply streams, gone when it has finished.
+  stop_button: "button[aria-label='Stop'], button[data-testid='stop-button']"
+  # The reply's markdown body. The whole turn
+  # ([data-chatgpt-search-unit-key*=':assistant']) works too, but its text
+  # starts with the screen-reader label "ChatGPT said:".
+  assistant_message: "div[data-markdown-text-style='assistant-message'], [data-message-author-role='assistant']"
+  file_download_link: "a[href*='sandbox']"   # unused: replies are forced to plain text
+  # 2026-10-04: a generated image is a blob: <img> inside a
+  # "generated-image-preview" button; the old /backend-api/estuary/content src
+  # is gone. Both download the same way (BrowserSession.fetch_bytes reads blob:).
+  generated_image: "button[data-testid='generated-image-preview'] img, img[alt*='Generated image' i], img[src*='/backend-api/estuary/content']"
   # The cookie banner overlays the bottom of the page (where the composer is).
-  # NOT verified against the live DOM yet — tried in order, best effort, so a
-  # miss costs nothing. Text matches are language-dependent by nature.
+  # Tried in order, best effort; text matches are language-dependent by nature.
   cookie_dismiss:
     - "button:has-text('Accept all')"
     - "button:has-text('Chấp nhận tất cả')"
     - "button[aria-label*='cookie' i]"
-  attach_image_input: "input[data-testid='upload-photos-input']"
+  # The composer's hidden photo <input> — files are set on it directly, with no
+  # need to open the "+" menu. Used to attach a script's reference image(s).
+  attach_image_input: "input[type='file'][aria-label='Attach photos'], input[type='file'][aria-label='Attach photos or videos'], input[data-testid='upload-photos-input']"
 
 grok:
   # Verified 2026-09-28 against a live CDP capture of grok.com/imagine in VIDEO
