@@ -33,13 +33,16 @@ chatgpt:
   # is English only, and a customer on another interface got the text typed in
   # and nothing sent.
   send_button: "form button[type='submit'], button[aria-label='Send'], button[data-testid='send-button'], #composer-submit-button"
-  # Present while the reply streams, gone when it has finished. English-only,
-  # and there is no language-independent stand-in: the one markup difference
-  # (svg.icon-primary-action) also matches the idle Voice button, which would
-  # hang every step for the whole response timeout. So this is a shortcut, not
-  # the guarantee — when it never appears the reply is read once its text has
-  # stopped growing (see _wait_response_complete).
-  stop_button: "button[aria-label='Stop'], button[data-testid='stop-button']"
+  # Present while the reply streams, gone when it has finished.
+  # aria-label='Stop' is English only, so the first shape carries the weight:
+  # while a reply streams the composer form holds exactly one DISABLED button
+  # (verified 2026-10-04 in all four states — idle+empty, text typed,
+  # streaming, finished — 1 only while streaming). It matters that this works
+  # through the file alone: builds already installed on customer machines have
+  # no other way to tell a finished reply from a half-written one.
+  # NOT svg.icon-primary-action, which also matches the idle Voice button and
+  # would hang every step for the whole response timeout.
+  stop_button: "form button[disabled], button[aria-label='Stop'], button[data-testid='stop-button']"
   # The reply's markdown body. The whole turn
   # ([data-chatgpt-search-unit-key*=':assistant']) works too, but its text
   # starts with the screen-reader label "ChatGPT said:".
