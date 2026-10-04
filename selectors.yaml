@@ -28,11 +28,17 @@ chatgpt:
     - "[data-testid='login-button']"
     - "a[href*='/auth/login']"
     - "button[data-testid='mobile-login-button']"
-  # Only exists once the composer has text. aria-label is all that marks it now.
-  #   button[aria-label=Send]            (2026-10-04)
-  #   button[data-testid=send-button]    (2026-09-25)
-  send_button: "button[aria-label='Send'], button[data-testid='send-button'], #composer-submit-button"
-  # Present while the reply streams, gone when it has finished.
+  # Only exists once the composer has text. The composer form's submit button
+  # IS the send button and reads the same in every language; aria-label='Send'
+  # is English only, and a customer on another interface got the text typed in
+  # and nothing sent.
+  send_button: "form button[type='submit'], button[aria-label='Send'], button[data-testid='send-button'], #composer-submit-button"
+  # Present while the reply streams, gone when it has finished. English-only,
+  # and there is no language-independent stand-in: the one markup difference
+  # (svg.icon-primary-action) also matches the idle Voice button, which would
+  # hang every step for the whole response timeout. So this is a shortcut, not
+  # the guarantee — when it never appears the reply is read once its text has
+  # stopped growing (see _wait_response_complete).
   stop_button: "button[aria-label='Stop'], button[data-testid='stop-button']"
   # The reply's markdown body. The whole turn
   # ([data-chatgpt-search-unit-key*=':assistant']) works too, but its text
@@ -51,7 +57,9 @@ chatgpt:
     - "button[aria-label*='cookie' i]"
   # The composer's hidden photo <input> — files are set on it directly, with no
   # need to open the "+" menu. Used to attach a script's reference image(s).
-  attach_image_input: "input[type='file'][aria-label='Attach photos'], input[type='file'][aria-label='Attach photos or videos'], input[data-testid='upload-photos-input']"
+  # accept="image/*" picks the photo input in any language; the aria-label
+  # shapes are English only.
+  attach_image_input: "form input[type='file'][accept='image/*'], input[type='file'][aria-label='Attach photos'], input[type='file'][aria-label='Attach photos or videos'], input[data-testid='upload-photos-input']"
 
 grok:
   # Verified 2026-09-28 against a live CDP capture of grok.com/imagine in VIDEO
@@ -99,7 +107,7 @@ grok:
   # verified 2026-09-28 (smoke run): the composer grows a real submit button
   # once an image/prompt is present -> aria-label="Submit", type="submit".
   # Empty would fall back to pressing Enter in the composer (that works too).
-  generate_button: "button[aria-label='Submit']"
+  generate_button: "form button[type='submit'], button[aria-label='Submit']"
   # The rendered video. The sidebar history uses the SAME
   # assets.grok.com/users/…/generated/<id>/generated_video.mp4 URL shape, so it
   # has to be excluded — but scoping to <main> (what this used to do) only
@@ -132,6 +140,13 @@ patterns:
     - "upgrade to (chatgpt )?(plus|pro|go)"
     - "you(’|')?ll be able to .{0,20}again (after|at|in)"
     - "image generation limit"
+    # Giao diện tiếng Việt (khách dùng bản này). Mỗi mẫu phải ĐỦ CỤ THỂ để
+    # không khớp vào chính câu chuyện — quota được dò trên toàn bộ nội dung
+    # trả lời. Chưa thấy chữ thật, nên nếu khách chụp được màn hình báo hết
+    # lượt thì chép đúng chữ đó vào đây và bỏ mẫu nào không đúng.
+    - "nâng cấp lên (chatgpt )?(plus|pro|go)"
+    - "bạn đã đạt (đến |tới )?giới hạn"
+    - "giới hạn (tin nhắn|tạo ảnh)"
     # KHONG them mau tieng Viet chung chung ("giới hạn", "hết lượt"): quota duoc
     # do tren TOAN BO noi dung tra loi, tuc la ca cau chuyen — mot cau van binh
     # thuong nhu "Cô ấy đã chạm tới giới hạn của sự chịu đựng" se bi coi la het
@@ -158,6 +173,9 @@ patterns:
     - "sign in to continue"
     - "you(’|')?ve been logged out"
     - "session (has )?expired"
+    - "vui lòng đăng nhập"
+    - "đăng nhập để tiếp tục"
+    - "phiên.{0,15}hết hạn"
 
 # Section heading regexes (matched on a stripped line, IGNORECASE).
 # Order = canonical section order (1..9).
