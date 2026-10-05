@@ -312,9 +312,16 @@ patterns:
 
     - "nâng cấp lên (chatgpt )?(plus|pro|go)"
 
-    - "bạn đã đạt (đến |tới )?giới hạn"
 
     - "giới hạn (tin nhắn|tạo ảnh)"
+    # Grok Imagine, read off the live canvas 2026-10-05 once the account ran
+    # out of credits mid-render. "gioi han su dung" (usage limit) and "them
+    # tin dung" (add credits) are interface wording; a story can use the word
+    # "gioi han" on its own all it likes without tripping these.
+    - "giới hạn sử dụng"
+    - "thêm tín dụng"
+    - "usage limit"
+    - "add credits"
 
     # KHONG them mau tieng Viet chung chung ("giới hạn", "hết lượt"): quota duoc
 
