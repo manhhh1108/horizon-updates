@@ -94,7 +94,11 @@ chatgpt:
 
   # starts with the screen-reader label "ChatGPT said:".
 
-  assistant_message: "div[data-markdown-text-style='assistant-message'], [data-message-author-role='assistant']"
+  # The screen-reader heading is the ONLY marker an IMAGE turn shares
+  # with a text turn (verified live 2026-10-05): an image turn has no
+  # markdown root and no ":assistant" search-unit key, so a refusal on
+  # one read as nothing at all and the step reported a blank.
+  assistant_message: "div[data-markdown-text-style='assistant-message'], div:has(> h4[data-conversation-role='assistant']), [data-message-author-role='assistant']"
 
   file_download_link: "a[href*='sandbox']"   # unused: replies are forced to plain text
 
@@ -338,6 +342,12 @@ patterns:
     - "against.*content policy"
 
     - "unable to generate this image"
+    # Read off the live refusal 2026-10-05 (ChatGPT in Vietnamese):
+    # "Rat tiec, nhung hinh anh chung ta tao ra co the vi pham cac quy
+    #  dinh cua chung toi ve bao luc ... chinh sua cau lenh cua ban."
+    - "vi phạm các quy định"
+    - "chỉnh sửa câu lệnh"
+    - "violate our (content )?polic"
 
   video_error:
 
